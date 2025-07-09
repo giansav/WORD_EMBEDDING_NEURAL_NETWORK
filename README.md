@@ -10,7 +10,8 @@ Il programma è una rete neurale minimale che genera rappresentazioni semantiche
 Il suo scopo è meramente didattico: esso consente di familiarizzare con la semantica distribuzionale e con l'embedding, in quanto processo "appreso". 
 Il programma infatti permette all'utente di esplorare empiricamente in che modo l'input di addestramento determini l'effettivo riconoscimento dei token linguistici da parte della rete neurale e la loro immersione nello spazio della rappresentazione semantica. 
 
-
+<br>
+<br>
 
 # Descrizione
 
