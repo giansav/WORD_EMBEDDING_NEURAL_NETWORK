@@ -1,6 +1,6 @@
 # WORD EMBEDDING NEURAL NETWORK
 
-## *"You shall know a word by the company it keeps."*
+*"You shall know a word by the company it keeps."*
 John Rupert Firth, *A synopsis of linguistic theory 1930-1955* (1957)
 
 
