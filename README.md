@@ -1,3 +1,7 @@
+                                                                                                                        "You shall know a word by the company it keeps."
+                                                                                                                        John Rupert Firth, A synopsis of linguistic theory 1930-1955 (1957)
+
+
 # WORD EMBEDDING NEURAL NETWORK
 
 Il programma è una rete neurale minimale che genera rappresentazioni semantiche delle parole.
