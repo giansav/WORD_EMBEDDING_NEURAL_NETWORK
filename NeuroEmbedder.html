@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+
+<!-- 
+
+*** WORD EMBEDDING NEURAL NETWORK ***
+
+Il programma è una rete neurale minimale, con un solo hidden layer, per certi versi una versione semplificata del modello Skip-Gram, che genera rappresentazioni semantiche delle parole.
+
+
+
+DESCRIZIONE
+
+Il programma:
+1) chiede all’utente di inserire una serie di frasi con cui addestrare la rete neurale;
+2) estrae dalle frasi inserite le parole rilevanti, escludendo articoli, preposizioni e congiunzioni;
+3) costruisce da queste parole un corpus di coppie di parole vicine semanticamente (co-occorrenze);
+4) allena una rete neurale molto semplice per generare, per ogni parola, un embedding in uno spazio di 2 sole dimensioni;
+5) alla fine, consente all’utente di:
+    - scegliere una parola del vocabolario costruito dagli input
+    - visualizzarne l’embedding in un grafico 2D
+    - vedere le n (numero scelto dall'utente) parole semanticamente più vicine (secondo la rete) alla parola inserita collegate ad essa da linee.
+
+
+        
+CARATTERISTICHE TECNICHE
+
+Il programma usa una rete neurale feedforward con 1 solo livello nascosto:
+    input = parola
+    hidden layer = vettore 2D (embedding)
+    output = previsione di parole correlate
+
+La rete viene addestrata con un processo semplificato tipo Skip-gram: a ogni coppia di parole viene chiesto di indovinare una nuova parola partendo dall’altra.
+
+La rete impara a rappresentare ogni parola in modo che le parole correlate finiscano vicine nel piano.
+
+Il calcolo dei gradienti e l'aggiornamento dei pesi della rete avvengono attraverso una versione semplificata di un algoritmo di ottimizzazione (Stochastic Gradient Descent), 
+
+Il programma è in Python puro, importa solo moduli di base per la matematica e la visualizzazione grafica dell'output, ma non si avvale di nessuna libreria specializzata in reti neurali (come TensorFlow o PyTorch). 
+
+-->
+
+
+<html lang="it">
+
+
+<head>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Word Embedding Neural Network</title>
+    <author>Gianfranco Savino</author>
+    
+    <!-- attributi di stile per gli oggetti della pagina-->
+    <style>
+
+        /* corpo della pagina */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            padding: 0;
+        }
+
+        /* contenitore principale */
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        /* titolo */
+        h1 {
+            text-align: center;
+        }
+
+        /* caselle di input */
+        #wordInput, #neighborInput {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 0px;
+            font-family: Arial, sans-serif; 
+            font-size: 16px; 
+        }
+
+        /* placeholder per le caselle di input */
+        #wordInput::placeholder, #neighborInput::placeholder {
+            font-family: Arial, sans-serif; 
+            font-size: 14px; 
+            font-style: italic;
+        }
+
+        /* bottone container */
+        .button-container {
+            display: flex;
+            flex-direction: column; /* Disposizione verticale */
+            align-items: center;
+            margin-top: 10px;
+        }
+
+        /* stile generale dei bottoni */
+        .button-container button {
+            font-family: Arial, sans-serif; 
+            font-size: 16px; 
+            padding: 10px 20px;
+            margin-bottom: 20px;
+            width: 20%; 
+            text-align: center; 
+        }
+
+        /* container per la casella di input */
+        #embeddingContainer {
+            display: flex;
+            flex-direction: column; 
+            align-items: center; 
+            margin-top: 10px;
+            width: 100%; 
+        }
+
+        /* bottone "Mostra l'Embedding" */
+        #embeddingContainer button {
+            width: 20%; 
+            margin-top: 15px;
+            padding: 10px 20px;
+            margin-bottom: 10px;
+            font-size: 16px;
+            white-space: nowrap; /* Impedisce il ritorno a capo del testo */
+        }
+
+        /* contenitore del vocabolario */
+        #vocabularyContainer {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f1f1f1;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            font-size: 14px;
+        }
+
+        /* lista del vocabolario */
+        #vocabularyContainer span {
+            display: inline-block;
+            margin-right: 5px;
+            font-size: 14px;
+        }
+
+        /* messaggio di successo */
+        .success-message {
+            color: green;
+            margin-left: 10px;
+            font-weight: bold;
+        }
+
+        /* messaggio di errore */
+        .error {
+            color: red;
+        }
+
+        /* contenitore per il grafico (canvas) */
+        #canvasContainer {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 20px;
+        }
+
+        /* grafico (canvas) */
+        canvas {
+            border: 1px solid #ccc;
+            background-color: #f9f9f9;
+        }
+
+        /* sezione per il messaggio di successo (accanto al bottone) */
+        #successMessage {
+            margin-top: 10px;
+            font-size: 16px;
+        }
+
+    </style>
+
+</head>
+
+
+
+<body>
+    
+    
+    <!-- VIEW: disposizione degli oggetti sulla pagina-->
+    
+    <!-- contenitore generale dell'app -->
+    <div class="container">
+
+        <!-- nome dell'app -->
+        <h1>Word Embedding Neural Network</h1>
+        
+        <!-- come utilizzare l'app -->
+        <p>Inserisci un certo numero di frasi separate da un punto e clicca su "Allena il Modello" per creare un modello di embedding. Quindi scegli una parola dal vocabolario creato dal modello, inseriscila e visualizza il suo embedding.</p>
+        
+        <!-- area per l'inserimento delle frasi con cui allenare la rete -->
+        <textarea id="wordInput" placeholder="Inserisci qui le frasi separate da un punto..." rows="5"></textarea>
+        
+        <!-- bottone per allenare la rete -->
+        <div class="button-container">
+            <button onclick="trainModel()">Allena il Modello</button>
+
+            <!-- messaggio di avvenuto completamento dell'addesrtamento della rete -->
+            <span id="successMessage" class="success-message" style="display:none;">Modello allenato con successo!</span>
+        </div>
+        
+        <!-- area per la visualizzazione del vocabolario generato dalla rete -->
+        <div id="vocabularyContainer" style="display:none;">
+            <h3>Vocabolario Creato:</h3>
+            <div id="vocabularyList"></div>
+        </div>
+        
+        <!-- casella di input per la scelta della parola di cui mostrare l'embedding -->
+        <div id="embeddingContainer">
+            <input type="text" id="neighborInput" placeholder="Inserisci una parola del vocabolario creato per visualizzare il suo embedding..." />
+            
+            <!-- bottone "Mostra l'Embedding" -->
+            <button onclick="showEmbedding()">Visualizza l'Embedding</button>
+        </div>
+        
+        <!-- canvas per il grafico -->
+        <div id="canvasContainer">
+            <canvas id="embeddingCanvas" width="600" height="500"></canvas>
+        </div>
+        
+        <!-- messaggio di errore (eventuale) -->
+        <p id="errorMessage" class="error"></p>
+    
+    </div>
+
+
+    
+    <!-- LOGICA: codice JS che traduce il codice originario in Python e fornisce la logica alla rete -->
+    
+    <script>
+
+        // inizializzazione delle variabili
+        let vocab = [];  // lista del vocabolario
+        let wordToIndex = {};
+        let indexToWord = {};
+        let filteredCorpus = [];
+        let embeddings = []; // lista dei vettori di embedding
+        let W1 = [];  // peso dei neuroni dell'hidden layer
+        let W2 = [];  // peso dell'output
+
+        // inizializzazione dei parametri della rete
+        const embeddingDim = 2; // dimensione dell'embedding
+        const learningRate = 0.05;  // passo del gradien descent
+        const epochs = 2000;  // numero delle iterazioni per l'addestramento
+        
+        // funzione di normalizzazione della parola
+        // la rete deve ignorare le maiuscole, gli spazi e i segni grafici che non sono lettere
+        function normalize(word) {
+            return word.toLowerCase().replace(/[^a-zA-Z]/g, ''); 
+        }
+
+        // funzione Softmax --> converte i vettori "grezzi" in probabilità
+        function softmax(x) {
+            const maxVal = Math.max(...x);
+            const e_x = x.map(val => Math.exp(val - maxVal));
+            const sum_e = e_x.reduce((a, b) => a + b, 0);
+            return e_x.map(val => val / sum_e);
+        }
+
+        // !!! funzione per allenare il modello !!!
+        function trainModel() {
+            const inputText = document.getElementById('wordInput').value.trim().toLowerCase();
+            if (!inputText) {
+                document.getElementById('errorMessage').textContent = "❗ Inserisci delle frasi per allenare il modello.";
+                return;
+            }
+            
+            // preprocessing e creazione del corpus
+            let corpus = []; 
+            let sentences = inputText.split('.');
+            
+            // elenco di token che la rete deve ignorare
+            let stopWords = new Set([
+                "il", "lo", "la", "i", "gli", "le", "l", "un", "una", "uno",
+                "di", "a", "da", "in", "con", "su", "per", "tra", "fra",
+                "e", "o", "ma", "che", "si", "al", "nel", "col", "dal", "sol",
+                "del", "della", "dello", "dei", "degli", "delle",
+                "allo", "alla", "agli", "alle",
+                "dall'", "dallo", "dalla", "dai", "dagli", "dalle",
+                "nell'", "nello", "nella", "nei", "negli", "nelle",
+                "sull'", "sullo", "sulla", "sui", "sugli", "sulle",
+                "è", "é", "ma", "però", "anche", "neanche"
+            ]);
+            
+            sentences.forEach(sentence => {
+                let words = sentence.trim().split(/\s+/).map(word => normalize(word));
+                words.forEach((w1, i) => {
+                    words.forEach((w2, j) => {
+                        if (i !== j && !stopWords.has(w1) && !stopWords.has(w2)) {
+                            corpus.push([w1, w2]);
+                        }
+                    });
+                });
+            });
+
+            // creazione del vocabolario e dei dizionari (coppie parola-indice)
+            vocab = [...new Set(corpus.flat())];
+            wordToIndex = {};
+            indexToWord = {};
+            vocab.forEach((word, index) => {
+                wordToIndex[normalize(word)] = index;  // normalizzazione
+                indexToWord[index] = normalize(word);  // normalizzazione
+            });
+
+            const vocabSize = vocab.length;
+
+            // inizializzazione dei pesi W1 e W2
+            W1 = Array.from({ length: vocabSize }, () => Array.from({ length: embeddingDim }, () => Math.random() * 2 - 1));
+            W2 = Array.from({ length: embeddingDim }, () => Array.from({ length: vocabSize }, () => Math.random() * 2 - 1));
+
+            // allenamento = correzione dei pesi ad ogni iterazione
+            for (let epoch = 0; epoch < epochs; epoch++) {
+                const [x, y] = corpus[Math.floor(Math.random() * corpus.length)];
+                const xIdx = wordToIndex[x];
+                const yIdx = wordToIndex[y];
+                
+                const h = W1[xIdx];
+                const z = Array.from({ length: vocabSize }, (_, j) => {
+                    return h.reduce((sum, val, i) => sum + val * W2[i][j], 0);
+                });
+                
+                const yHat = softmax(z);
+                const error = Array(vocabSize).fill(0);
+                error[yIdx] = 1.0;
+                const dL_dz = yHat.map((val, i) => val - error[i]);
+                
+                for (let i = 0; i < embeddingDim; i++) {
+                    for (let j = 0; j < vocabSize; j++) {
+                        W2[i][j] -= learningRate * dL_dz[j] * h[i];
+                    }
+                }
+
+                for (let i = 0; i < embeddingDim; i++) {
+                    const dL_dh = dL_dz.reduce((sum, dz, j) => sum + dz * W2[i][j], 0);
+                    W1[xIdx][i] -= learningRate * dL_dh;
+                }
+            }
+
+            // creazione degli embeddings
+            embeddings = Object.entries(indexToWord).map(([idx, word]) => W1[idx]);
+
+            // visualizzazione del vocabolario generato
+            displayVocabulary();
+
+            // visualizzazione del messaggio di successo
+            document.getElementById('successMessage').style.display = 'inline';
+            document.getElementById('errorMessage').textContent = "";
+        }
+
+        // funzione per visualizzare il vocabolario
+        function displayVocabulary() {
+            const vocabularyList = document.getElementById('vocabularyList');
+            vocabularyList.innerHTML = ""; // pulire la lista già esistente
+
+            // aggiungere le parole separandole con delle virgole
+            const vocabularyText = vocab.join(", ");
+            vocabularyList.textContent = vocabularyText;
+
+            // visualizzazione del vocabolario nell'apposita sezione
+            document.getElementById('vocabularyContainer').style.display = 'block';
+        }
+
+        // !!! funzione per visualizzare l'embedding !!!
+        function showEmbedding() {
+            const wordInput = document.getElementById('neighborInput').value.trim();
+            const word = normalize(wordInput); // normalizzazione della parola inserita dall'utente
+
+            // eventuale messaggio di errore
+            if (!wordToIndex.hasOwnProperty(word)) {
+                document.getElementById('errorMessage').textContent = "❗ La parola '" + wordInput + "' non è stata trovata nel vocabolario.";
+                return;
+            }
+
+            const wordIdx = wordToIndex[word];
+            const center = W1[wordIdx];
+
+            // calcolo delle parole più vicine in base all'embedding
+            const distances = embeddings.map((vec, idx) => {
+                const distance = Math.sqrt(Math.pow(vec[0] - center[0], 2) + Math.pow(vec[1] - center[1], 2));
+                return { word: indexToWord[idx], distance };
+            }).sort((a, b) => a.distance - b.distance);
+
+            const nearestWords = distances.slice(1, 6); // selezionare le 5 parole più vicine
+
+            // funzione di clamping per garantire che le coordinate siano nel range dell'area visibile
+            function clamp(value, min, max) {
+                return Math.max(min, Math.min(max, value));
+            }
+
+            // visualizzazione del grafico
+            const canvas = document.getElementById('embeddingCanvas');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // fattore di scala = controlla quanto devono essere distanziati i punti
+            const scaleFactor = 100;  
+
+            // impostazione dell'offset per centrare il grafico
+            const offsetX = canvas.width / 2;
+            const offsetY = canvas.height / 2;
+
+            // rappresentazione della parola centrale
+            ctx.fillStyle = "red";
+            ctx.beginPath();
+            const xCenter = center[0] * scaleFactor + offsetX;
+            const yCenter = center[1] * scaleFactor + offsetY;
+
+            // la funzione di clamping garantisce che il punto sia visibile nel canvas
+            const clampedX = clamp(xCenter, 0, canvas.width);
+            const clampedY = clamp(yCenter, 0, canvas.height);
+
+            ctx.arc(clampedX, clampedY, 5, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.font = "12px Arial";
+            ctx.fillText(word, clampedX + 10, clampedY + 5);
+
+            // rappresentazione delle parole vicine e delle linee di connessione ---
+            nearestWords.forEach(neighbor => {
+                const neighborVec = W1[wordToIndex[neighbor.word]];
+                ctx.fillStyle = "blue";
+                ctx.beginPath();
+
+                const xNeighbor = neighborVec[0] * scaleFactor + offsetX;
+                const yNeighbor = neighborVec[1] * scaleFactor + offsetY;
+
+                // la funzione di clamping garantisce che i punti siano visibile nel canvas
+                const clampedXNeighbor = clamp(xNeighbor, 0, canvas.width);
+                const clampedYNeighbor = clamp(yNeighbor, 0, canvas.height);
+
+                ctx.arc(clampedXNeighbor, clampedYNeighbor, 5, 0, 2 * Math.PI);
+                ctx.fill();
+                ctx.fillText(neighbor.word, clampedXNeighbor + 10, clampedYNeighbor + 5);
+
+                // disegno delle linee che connettono la parola centrale alle parole vicine
+                ctx.beginPath();
+                ctx.moveTo(clampedX, clampedY);
+                ctx.lineTo(clampedXNeighbor, clampedYNeighbor);
+                ctx.strokeStyle = "#999"; // colore della linea
+                ctx.stroke(); 
+            });
+        }
+
+    </script>
+
+
+
+</body>
+
+
+
+</html>

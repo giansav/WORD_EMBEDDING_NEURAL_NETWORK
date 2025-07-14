@@ -1,7 +1,7 @@
 """
 *** WORD EMBEDDING NEURAL NETWORK ***
 
-Il programma è una rete neurale minimale che genera rappresentazioni semantiche delle parole.
+Il programma è una rete neurale minimale, con un solo hidden layer, per certi versi una versione semplificata del modello Skip-Gram, che genera rappresentazioni semantiche delle parole.
 
 
 
@@ -30,7 +30,9 @@ La rete viene addestrata con un processo semplificato tipo Skip-gram: a ogni cop
 
 La rete impara a rappresentare ogni parola in modo che le parole correlate finiscano vicine nel piano.
 
-Il programma è in Python puro, importa solo le librerie necessarie alla matematica della rete e alla visualizzaizone grafica dell'output, ma non si avvale di nessuna libreria specializzata in reti neurali (come TensorFlow o PyTorch).
+Il calcolo dei gradienti e l'aggiornamento dei pesi della rete avvengono attraverso una versione semplificata di un algoritmo di ottimizzazione (Stochastic Gradient Descent), 
+
+Il programma è in Python puro, importa solo moduli di base per la matematica e la visualizzazione grafica dell'output, ma non si avvale di nessuna libreria specializzata in reti neurali (come TensorFlow o PyTorch). 
 
 """
 
